@@ -178,7 +178,7 @@ export const PROFILES = {
     rules: {
       'local/expression-syntax': [ 'error', { style: 'feel' } ]
     },
-    defaultVersion: '8.8'
+    defaultVersion: '8.10'
   },
 
   flowable: {
