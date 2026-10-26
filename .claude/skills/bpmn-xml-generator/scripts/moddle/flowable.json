@@ -1,0 +1,441 @@
+{
+  "name": "flowable",
+  "prefix": "flowable",
+  "uri": "http://flowable.org/bpmn",
+  "xml": {
+    "tagAlias": "lowerCase"
+  },
+  "associations": [],
+  "types": [
+    {
+      "name": "AsyncCapable",
+      "isAbstract": true,
+      "extends": [
+        "bpmn:Activity",
+        "bpmn:Gateway",
+        "bpmn:Event"
+      ],
+      "properties": [
+        {
+          "name": "async",
+          "type": "Boolean",
+          "isAttr": true
+        },
+        {
+          "name": "exclusive",
+          "type": "Boolean",
+          "isAttr": true
+        }
+      ]
+    },
+    {
+      "name": "Assignable",
+      "extends": [
+        "bpmn:UserTask"
+      ],
+      "properties": [
+        {
+          "name": "assignee",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "candidateUsers",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "candidateGroups",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "dueDate",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "priority",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "category",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "skipExpression",
+          "type": "String",
+          "isAttr": true
+        }
+      ]
+    },
+    {
+      "name": "FormSupported",
+      "extends": [
+        "bpmn:UserTask",
+        "bpmn:StartEvent"
+      ],
+      "properties": [
+        {
+          "name": "formKey",
+          "type": "String",
+          "isAttr": true
+        }
+      ]
+    },
+    {
+      "name": "Initiator",
+      "extends": [
+        "bpmn:StartEvent"
+      ],
+      "properties": [
+        {
+          "name": "initiator",
+          "type": "String",
+          "isAttr": true
+        }
+      ]
+    },
+    {
+      "name": "ServiceTaskLike",
+      "extends": [
+        "bpmn:ServiceTask",
+        "bpmn:SendTask",
+        "bpmn:BusinessRuleTask"
+      ],
+      "properties": [
+        {
+          "name": "class",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "delegateExpression",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "expression",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "resultVariable",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "type",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "topic",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "skipExpression",
+          "type": "String",
+          "isAttr": true
+        }
+      ]
+    },
+    {
+      "name": "RuleTask",
+      "extends": [
+        "bpmn:BusinessRuleTask"
+      ],
+      "properties": [
+        {
+          "name": "ruleVariablesInput",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "rules",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "exclude",
+          "type": "Boolean",
+          "isAttr": true
+        }
+      ]
+    },
+    {
+      "name": "ScriptTaskExt",
+      "extends": [
+        "bpmn:ScriptTask"
+      ],
+      "properties": [
+        {
+          "name": "resultVariable",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "autoStoreVariables",
+          "type": "Boolean",
+          "isAttr": true
+        }
+      ]
+    },
+    {
+      "name": "CallActivityExt",
+      "extends": [
+        "bpmn:CallActivity"
+      ],
+      "properties": [
+        {
+          "name": "inheritVariables",
+          "type": "Boolean",
+          "isAttr": true
+        },
+        {
+          "name": "calledElementType",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "businessKey",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "inheritBusinessKey",
+          "type": "Boolean",
+          "isAttr": true
+        },
+        {
+          "name": "fallbackToDefaultTenant",
+          "type": "Boolean",
+          "isAttr": true
+        }
+      ]
+    },
+    {
+      "name": "Collectable",
+      "extends": [
+        "bpmn:MultiInstanceLoopCharacteristics"
+      ],
+      "properties": [
+        {
+          "name": "collection",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "elementVariable",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "elementIndexVariable",
+          "type": "String",
+          "isAttr": true
+        }
+      ]
+    },
+    {
+      "name": "SignalScope",
+      "extends": [
+        "bpmn:Signal"
+      ],
+      "properties": [
+        {
+          "name": "scope",
+          "type": "String",
+          "isAttr": true
+        }
+      ]
+    },
+    {
+      "name": "TerminateAll",
+      "extends": [
+        "bpmn:TerminateEventDefinition"
+      ],
+      "properties": [
+        {
+          "name": "terminateAll",
+          "type": "Boolean",
+          "isAttr": true
+        }
+      ]
+    },
+    {
+      "name": "Field",
+      "superClass": [
+        "Element"
+      ],
+      "meta": {
+        "allowedIn": [
+          "bpmn:ServiceTask",
+          "bpmn:SendTask",
+          "bpmn:BusinessRuleTask",
+          "flowable:ExecutionListener",
+          "flowable:TaskListener"
+        ]
+      },
+      "properties": [
+        {
+          "name": "name",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "stringValue",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "expression",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "string",
+          "type": "String"
+        }
+      ]
+    },
+    {
+      "name": "In",
+      "superClass": [
+        "Element"
+      ],
+      "meta": {
+        "allowedIn": [
+          "bpmn:CallActivity"
+        ]
+      },
+      "properties": [
+        {
+          "name": "source",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "sourceExpression",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "target",
+          "type": "String",
+          "isAttr": true
+        }
+      ]
+    },
+    {
+      "name": "Out",
+      "superClass": [
+        "Element"
+      ],
+      "meta": {
+        "allowedIn": [
+          "bpmn:CallActivity"
+        ]
+      },
+      "properties": [
+        {
+          "name": "source",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "sourceExpression",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "target",
+          "type": "String",
+          "isAttr": true
+        }
+      ]
+    },
+    {
+      "name": "ExecutionListener",
+      "superClass": [
+        "Element"
+      ],
+      "meta": {
+        "allowedIn": [
+          "bpmn:Process",
+          "bpmn:FlowNode",
+          "bpmn:SequenceFlow"
+        ]
+      },
+      "properties": [
+        {
+          "name": "event",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "class",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "expression",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "delegateExpression",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "fields",
+          "type": "Field",
+          "isMany": true
+        }
+      ]
+    },
+    {
+      "name": "TaskListener",
+      "superClass": [
+        "Element"
+      ],
+      "meta": {
+        "allowedIn": [
+          "bpmn:UserTask"
+        ]
+      },
+      "properties": [
+        {
+          "name": "event",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "class",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "expression",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "delegateExpression",
+          "type": "String",
+          "isAttr": true
+        },
+        {
+          "name": "fields",
+          "type": "Field",
+          "isMany": true
+        }
+      ]
+    }
+  ],
+  "enumerations": []
+}

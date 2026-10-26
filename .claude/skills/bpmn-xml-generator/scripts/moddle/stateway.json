@@ -1,0 +1,120 @@
+{
+  "name": "stateway",
+  "prefix": "stateway",
+  "uri": "https://stateway.io/schema/bpmn/1.0",
+  "xml": {
+    "tagAlias": "lowerCase"
+  },
+  "associations": [],
+  "types": [
+    {
+      "name": "DecisionTask",
+      "extends": [
+        "bpmn:BusinessRuleTask"
+      ],
+      "properties": [
+        { "name": "decisionRef", "type": "String", "isAttr": true },
+        { "name": "decisionVersion", "type": "String", "isAttr": true }
+      ]
+    },
+    {
+      "name": "TaskDefinition",
+      "superClass": [ "Element" ],
+      "meta": {
+        "allowedIn": [ "bpmn:ServiceTask", "bpmn:SendTask", "bpmn:BusinessRuleTask" ]
+      },
+      "properties": [
+        { "name": "type", "type": "String", "isAttr": true }
+      ]
+    },
+    {
+      "name": "TaskHeaders",
+      "superClass": [ "Element" ],
+      "meta": {
+        "allowedIn": [ "bpmn:ServiceTask", "bpmn:SendTask", "bpmn:BusinessRuleTask" ]
+      },
+      "properties": [
+        { "name": "values", "type": "TaskHeader", "isMany": true }
+      ]
+    },
+    {
+      "name": "TaskHeader",
+      "superClass": [ "Element" ],
+      "properties": [
+        { "name": "key", "type": "String", "isAttr": true },
+        { "name": "value", "type": "String", "isAttr": true }
+      ]
+    },
+    {
+      "name": "IoMapping",
+      "superClass": [ "Element" ],
+      "meta": {
+        "allowedIn": [
+          "bpmn:StartEvent",
+          "bpmn:UserTask",
+          "bpmn:ServiceTask",
+          "bpmn:SendTask",
+          "bpmn:BusinessRuleTask",
+          "bpmn:BoundaryEvent",
+          "bpmn:IntermediateCatchEvent"
+        ]
+      },
+      "properties": [
+        { "name": "inputParameters", "type": "Input", "isMany": true },
+        { "name": "outputParameters", "type": "Output", "isMany": true }
+      ]
+    },
+    {
+      "name": "InputOutputParameter",
+      "properties": [
+        { "name": "source", "type": "String", "isAttr": true },
+        { "name": "target", "type": "String", "isAttr": true }
+      ]
+    },
+    {
+      "name": "Input",
+      "superClass": [ "InputOutputParameter" ]
+    },
+    {
+      "name": "Output",
+      "superClass": [ "InputOutputParameter" ]
+    },
+    {
+      "name": "AssignmentDefinition",
+      "superClass": [ "Element" ],
+      "meta": {
+        "allowedIn": [ "bpmn:UserTask" ]
+      },
+      "properties": [
+        { "name": "assignee", "type": "String", "isAttr": true },
+        { "name": "candidateUsers", "type": "String", "isAttr": true },
+        { "name": "candidateGroups", "type": "String", "isAttr": true }
+      ]
+    },
+    {
+      "name": "EventCorrelation",
+      "superClass": [ "Element" ],
+      "meta": {
+        "allowedIn": [
+          "bpmn:IntermediateCatchEvent",
+          "bpmn:BoundaryEvent",
+          "bpmn:StartEvent"
+        ]
+      },
+      "properties": [
+        { "name": "eventName", "type": "String", "isAttr": true }
+      ]
+    },
+    {
+      "name": "VariableFilter",
+      "superClass": [ "Element" ],
+      "meta": {
+        "allowedIn": [ "bpmn:IntermediateThrowEvent", "bpmn:EndEvent" ]
+      },
+      "properties": [
+        { "name": "variables", "type": "String", "isAttr": true }
+      ]
+    }
+  ],
+  "enumerations": []
+}
