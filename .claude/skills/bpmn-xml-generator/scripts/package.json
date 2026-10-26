@@ -1,0 +1,18 @@
+{
+  "name": "bpmn-xml-generator-scripts",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Validation and layout helpers for the bpmn-xml-generator skill",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bpmn-auto-layout": "1.3.0",
+    "bpmn-moddle": "10.3.1",
+    "bpmnlint": "11.15.0",
+    "bpmnlint-plugin-camunda-compat": "2.63.0",
+    "zeebe-bpmn-moddle": "2.0.0"
+  }
+}
