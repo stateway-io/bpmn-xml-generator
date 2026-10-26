@@ -3,7 +3,8 @@
 //
 //   ```xml profile=<core|stateway|camunda8|flowable>   complete document: validate.mjs
 //                                                       with that profile (zero errors AND
-//                                                       zero warnings) + layout smoke test
+//                                                       zero warnings), before and after
+//                                                       layout.mjs adds the diagram
 //   ```xml                                              snippet: must be well-formed XML
 //
 // Usage: node tests/run-examples.mjs   (after `npm ci` in the skill's scripts/ folder)
@@ -87,8 +88,17 @@ for (const file of markdownFiles()) {
       const result = await validate(target, { profile: block.profile });
       const problems = result.findings.filter(finding => finding.level !== 'info');
 
+      // the laid-out file must stay valid (extensions preserved, DI complete)
       try {
-        await layout(block.xml);
+        const laidOut = target.replace(/\.bpmn$/, '.layout.bpmn');
+
+        writeFileSync(laidOut, await layout(block.xml));
+
+        const after = await validate(laidOut, { profile: block.profile });
+
+        problems.push(...after.findings
+          .filter(finding => finding.level !== 'info')
+          .map(finding => ({ ...finding, source: `after layout: ${finding.source}` })));
       } catch (error) {
         problems.push({ level: 'error', source: 'layout', message: error.message });
       }
