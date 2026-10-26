@@ -1,391 +1,331 @@
-# BPMN Element Reference
+# BPMN 2.0 Element Reference (core)
 
-Full attribute reference for commonly supported BPMN 2.0 elements.
-Parsed by `bpmn-moddle` against the OMG BPMN 2.0 schema.
+Engine-agnostic reference for the OMG BPMN 2.0 elements this skill generates.
+Everything here is plain BPMN 2.0 (namespace `http://www.omg.org/spec/BPMN/20100524/MODEL`)
+and validates against the OMG XSD shipped in `scripts/xsd/`.
+**No engine extension (`stateway:`, `zeebe:`, `flowable:` …) appears in this file** — those live
+in `profiles/<engine>.md`.
 
 ---
 
 ## Table of Contents
-1. [Root Elements](#1-root-elements)
-2. [Events](#2-events)
-3. [Activities](#3-activities)
-4. [Gateways](#4-gateways)
-5. [Sequence Flows](#5-sequence-flows)
-6. [Data & IO](#6-data--io)
-7. [Event Definitions](#7-event-definitions)
-8. [Extension Elements (Camunda-compatible)](#8-extension-elements-camunda-compatible)
+1. [Root elements](#1-root-elements)
+2. [Child element order (XSD)](#2-child-element-order-xsd)
+3. [Events](#3-events)
+4. [Event definitions](#4-event-definitions)
+5. [Activities](#5-activities)
+6. [Gateways](#6-gateways)
+7. [Sequence flows](#7-sequence-flows)
+8. [Data](#8-data)
+9. [Artifacts](#9-artifacts)
+10. [Out of scope](#10-out-of-scope)
 
 ---
 
-## 1. Root Elements
+## 1. Root elements
 
 ### `<definitions>`
 | Attribute | Required | Notes |
 |---|---|---|
-| `id` | ✅ | Unique identifier, e.g. `Definitions_order-approval` |
-| `targetNamespace` | ✅ | Any valid URI. Not read by the engine — required by the BPMN 2.0 XML schema. Preserve the original value when editing existing files. For new files, `http://bpmn.io/schema/bpmn` is the conventional default. |
-| `name` | — | Human label |
-| `exporter` | — | Tool name |
-| `exporterVersion` | — | Tool version |
+| `id` | recommended | `Definitions_{process-key}` |
+| `targetNamespace` | ✅ (XSD) | Any URI. Not read by engines. Preserve the existing value when editing; `http://bpmn.io/schema/bpmn` for new files. |
+| `expressionLanguage` | — | URI of the default expression language. Set by the profile (e.g. FEEL for Camunda 8). |
+| `typeLanguage` | — | Defaults to XML Schema. |
+| `exporter`, `exporterVersion` | — | `bpmn-xml-generator` / `2.0` |
 
-Required namespaces on `<definitions>`:
-```
-xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
-xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
-xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
-xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
-```
+Children, in this order: `import*`, `extension*`, root elements (any order among themselves), `bpmndi:BPMNDiagram*`.
+
+**Root elements** (siblings of `<process>`, never inside it):
+
+| Element | Referenced by |
+|---|---|
+| `<process>` | — |
+| `<message id name>` | `messageEventDefinition@messageRef`, `receiveTask@messageRef`, `sendTask@messageRef` |
+| `<signal id name>` | `signalEventDefinition@signalRef` |
+| `<error id name errorCode>` | `errorEventDefinition@errorRef` |
+| `<escalation id name escalationCode>` | `escalationEventDefinition@escalationRef` |
+| `<itemDefinition id structureRef>` | `dataObject@itemSubjectRef`, `message@itemRef` … |
+| `<dataStore id name>` | `dataStoreReference@dataStoreRef` |
 
 ### `<process>`
 | Attribute | Required | Notes |
 |---|---|---|
-| `id` | ✅ | Becomes the process identifier/key in the engine |
-| `name` | ✅ | Human-readable label |
-| `isExecutable` | ✅ | Must be `true` |
-| `processType` | — | `None` (default), `Public`, `Private` |
+| `id` | ✅ | The process key. kebab-case, must start with a letter (XML NCName). |
+| `name` | ✅ | Human-readable label. |
+| `isExecutable` | ✅ (by convention) | `true` for anything an engine will run (all profiles). `false` only for documentation-only models. |
+| `processType` | — | `None` (default), `Public`, `Private`. |
+
+Children order: `documentation*`, `extensionElements?`, `property*`, flow elements and artifacts (any order).
+Convention: nodes first, then all `<sequenceFlow>` at the bottom, then artifacts.
 
 ---
 
-## 2. Events
+## 2. Child element order (XSD)
+
+`bpmn-moddle` tolerates wrong child order, but the XSD (and engines that validate against it) do not.
+Always emit children in this order:
+
+| Element kind | Child order |
+|---|---|
+| **Any element** | `documentation*` → `extensionElements?` → … |
+| **Activity** (`task`, `userTask`, `serviceTask`, `subProcess`, `callActivity` …) | `documentation` → `extensionElements` → `incoming*` → `outgoing*` → `ioSpecification?` → `property*` → `dataInputAssociation*` → `dataOutputAssociation*` → `resourceRole*` → `loopCharacteristics?` → *type-specific* (`script` for scriptTask; flow elements and artifacts for sub-processes; `completionCondition` for adHocSubProcess) |
+| **Catch event** (`startEvent`, `intermediateCatchEvent`, `boundaryEvent`) | `documentation` → `extensionElements` → `incoming*` → `outgoing*` → `property*` → `dataOutput*` → `dataOutputAssociation*` → `outputSet?` → `eventDefinition*` |
+| **Throw event** (`endEvent`, `intermediateThrowEvent`) | `documentation` → `extensionElements` → `incoming*` → `outgoing*` → `property*` → `dataInput*` → `dataInputAssociation*` → `inputSet?` → `eventDefinition*` |
+| **Gateway** | `documentation` → `extensionElements` → `incoming*` → `outgoing*` (→ `activationCondition` for complexGateway) |
+| **Sequence flow** | `documentation` → `extensionElements` → `conditionExpression?` |
+| **`ioSpecification`** | `dataInput*` → `dataOutput*` → `inputSet+` → `outputSet+` (one of each set is **mandatory**) |
+| **Data association** | `sourceRef*` → `targetRef` (**mandatory**) → `transformation?` → `assignment*` |
+| **`multiInstanceLoopCharacteristics`** | `loopCardinality?` → `loopDataInputRef?` → `loopDataOutputRef?` → `inputDataItem?` → `outputDataItem?` → `completionCondition?` |
+
+---
+
+## 3. Events
+
+Every event: `id` (required), `name` (required by convention — bpmnlint `label-required`).
 
 ### `<startEvent>`
 | Attribute | Notes |
 |---|---|
-| `id` | required |
-| `name` | label shown in diagrams |
+| `isInterrupting` | Only meaningful inside an event sub-process. Default `true`. |
 
-**None start** (no child event definition): process starts immediately on instantiation.  
-**Timer start**: child `<timerEventDefinition>` — fires on schedule.  
-**Message start**: child `<messageEventDefinition messageRef="...">` — fires when message arrives.  
-**Signal start**: child `<signalEventDefinition signalRef="...">`.
+| Trigger | Child | Notes |
+|---|---|---|
+| None | — | Instantiated by API / parent. At most one blank start per scope. |
+| Timer | `timerEventDefinition` | Scheduled start. |
+| Message | `messageEventDefinition messageRef` | Start on correlated message. |
+| Signal | `signalEventDefinition signalRef` | Start on broadcast. |
+| Conditional | `conditionalEventDefinition` | Start when a condition becomes true. |
+| Error / Escalation / Compensation | — | **Only** inside an event sub-process. |
+
+A process may have several start events (e.g. a blank start plus a message start); each starts an independent instance.
 
 ### `<endEvent>`
-| Attribute | Notes |
-|---|---|
-| `id` | required |
-| `name` | label |
-
-**None end**: normal completion.  
-**Terminate end**: `<terminateEventDefinition/>` — cancels entire process instance.  
-**Error end**: `<errorEventDefinition errorRef="..."/>` — triggers error boundary events.  
-**Message end**: `<messageEventDefinition messageRef="..."/>` — sends message on completion.
+| Result | Child | Effect |
+|---|---|---|
+| None | — | Token is consumed; instance ends when no tokens remain. |
+| Terminate | `terminateEventDefinition` | Ends the **whole scope** immediately (all parallel tokens). |
+| Error | `errorEventDefinition errorRef` | Throws an error to the nearest matching error boundary/event sub-process. |
+| Escalation | `escalationEventDefinition escalationRef` | Non-critical escalation to the parent scope. |
+| Message | `messageEventDefinition messageRef` | Sends a message on completion. |
+| Signal | `signalEventDefinition signalRef` | Broadcasts a signal. |
+| Compensation | `compensateEventDefinition` | Triggers compensation. |
+| Cancel | `cancelEventDefinition` | **Only** inside a `<transaction>`. |
 
 ### `<intermediateCatchEvent>`
-| Attribute | Notes |
-|---|---|
-| `id` | required |
-| `name` | label |
-
-Supported definitions: Timer, Message, Signal, Conditional.  
-Must have exactly one `<incoming>` and one `<outgoing>`.
+Definitions: Timer, Message, Signal, Conditional, Link (target side).
+Usually one `<incoming>` and one `<outgoing>`; a Link catch has **no** `<incoming>`.
 
 ### `<intermediateThrowEvent>`
-Supported definitions: Message, Signal, Escalation.  
-Common use cases include sending notifications to interested parties, triggering downstream messages, or signaling other processes. For example, a Message throw event can notify a user that an automated step completed before the next human task begins.
+Definitions: none (milestone), Message, Signal, Escalation, Compensation, Link (source side).
+A Link throw has **no** `<outgoing>`.
 
 ### `<boundaryEvent>`
 | Attribute | Required | Notes |
 |---|---|---|
-| `id` | ✅ | |
-| `name` | — | label |
-| `attachedToRef` | ✅ | ID of the activity this event is attached to |
-| `cancelActivity` | — | `true` (interrupting, default) or `false` (non-interrupting) |
+| `attachedToRef` | ✅ | Activity it is attached to (task, sub-process, call activity). |
+| `cancelActivity` | — | `true` = interrupting (default), `false` = non-interrupting. |
 
-Supported definitions: Timer, Error, Message, Signal, Escalation.  
-Must have `<outgoing>` but **no** `<incoming>`.
-
----
-
-## 3. Activities
-
-### `<task>`
-Generic task — passes through immediately with no side effects.
-```xml
-<task id="log_entry" name="Log Entry">
-  <incoming>f1</incoming>
-  <outgoing>f2</outgoing>
-</task>
-```
-
-### `<userTask>`
-| Attribute | Notes |
-|---|---|
-| `id` | required |
-| `name` | displayed as task name in UI |
-| `camunda:assignee` | specific user id or `{{variables.manager}}` |
-| `camunda:candidateGroups` | comma-separated group names or `{{variables.team}}` |
-| `camunda:dueDate` | ISO 8601 datetime or `{{variables.dueDate}}` |
-| `camunda:formKey` | optional form key reference |
-
-The `camunda:` prefix attributes require `xmlns:camunda="http://camunda.org/schema/1.0/bpmn"` on `<definitions>`.
-
-For frontend data visibility, add `<ioSpecification>` with `<dataInput>` and `<dataOutput>` children. See section 6.
-
-### `<serviceTask>`
-| Attribute | Notes |
-|---|---|
-| `id` | required |
-| `name` | label |
-| `implementation` | `"webService"` for webhook/http dispatch |
-
-The engine dispatches a webhook to the configured URL when this task is reached. The task completes automatically after dispatch (fire-and-forget) unless a correlating `receiveTask` follows.
-
-### `<scriptTask>`
-| Attribute | Notes |
-|---|---|
-| `id` | required |
-| `name` | label |
-| `scriptFormat` | `"javascript"` — a restricted subset; no `eval`, `require`, DOM, or network access |
-
-```xml
-<scriptTask id="compute_score" name="Compute Score" scriptFormat="javascript">
-  <script>variables.score = variables.income / variables.debt * 10;</script>
-  <incoming>f1</incoming>
-  <outgoing>f2</outgoing>
-</scriptTask>
-```
-
-⚠️ Scripts have no access to `eval`, `require`, DOM, or network. Only `variables`, `instance`, `now()`.
-
-### `<sendTask>`
-Dispatches a message or webhook and continues immediately.
-
-### `<receiveTask>`
-Waits for a correlated message before continuing.
-```xml
-<receiveTask id="wait_payment" name="Wait for Payment Confirmation"
-             messageRef="msg_payment_confirmed">
-  <incoming>f1</incoming>
-  <outgoing>f2</outgoing>
-</receiveTask>
-```
-
-### `<businessRuleTask>`
-Evaluates a DMN decision table. The `camunda:decisionRef` attribute must contain the `id` of a DMN definition that has been previously registered in the engine. The referenced DMN definition must exist before the process instance reaches this task.
-```xml
-<businessRuleTask id="run_credit_rules" name="Credit Score Check"
-                  camunda:decisionRef="my-decision-id">
-  <extensionElements>
-    <camunda:in  variables="all"/>
-    <camunda:out variables="all"/>
-  </extensionElements>
-  <incoming>f1</incoming>
-  <outgoing>f2</outgoing>
-</businessRuleTask>
-```
-
-### `<callActivity>`
-Invokes another process definition as a sub-process.
-| Attribute | Notes |
-|---|---|
-| `calledElement` | key of the target process definition |
-
-```xml
-<callActivity id="run_kyc" name="Run KYC Process" calledElement="kyc-check">
-  <extensionElements>
-    <camunda:in  variables="all"/>
-    <camunda:out variables="all"/>
-  </extensionElements>
-  <incoming>f1</incoming>
-  <outgoing>f2</outgoing>
-</callActivity>
-```
-
-### `<subProcess>`
-Embedded sub-process. Contains its own start/end events and activities.
-```xml
-<subProcess id="sub_validation" name="Validation">
-  <incoming>f1</incoming>
-  <outgoing>f2</outgoing>
-  <startEvent id="sub_start"><outgoing>sub_f1</outgoing></startEvent>
-  <!-- ... sub-process elements ... -->
-  <endEvent id="sub_end"/>
-  <sequenceFlow id="sub_f1" sourceRef="sub_start" targetRef="..."/>
-</subProcess>
-```
+Definitions: Timer, Message, Signal, Error, Escalation, Conditional, Compensation, Cancel (transaction only).
+Error, Compensation and Cancel boundaries are always interrupting.
+Has `<outgoing>`; **never** `<incoming>` (a compensation boundary has neither — it connects through an `<association>`).
 
 ---
 
-## 4. Gateways
-
-### `<exclusiveGateway>` (XOR)
-Exactly one outgoing flow is taken based on conditions. The flow whose condition evaluates to `true` first (in document order) wins.
-
-**Default flow**: set `default="flow_id"` on the gateway, and omit `<conditionExpression>` on that flow. It is taken when no other condition matches.
+## 4. Event definitions
 
 ```xml
-<exclusiveGateway id="gw_check" name="Check Result" default="flow_default">
-  <incoming>f_in</incoming>
-  <outgoing>flow_high</outgoing>
-  <outgoing>flow_low</outgoing>
-  <outgoing>flow_default</outgoing>
-</exclusiveGateway>
-```
-
-### `<parallelGateway>` (AND)
-**Split**: all outgoing flows are activated simultaneously.  
-**Join**: waits for ALL incoming tokens before continuing. The same element ID is reused for both split and join — or separate elements can be used.
-
-```xml
-<!-- split -->
-<parallelGateway id="gw_split">
-  <incoming>f_in</incoming>
-  <outgoing>f_branch_a</outgoing>
-  <outgoing>f_branch_b</outgoing>
-</parallelGateway>
-
-<!-- join -->
-<parallelGateway id="gw_join">
-  <incoming>f_branch_a_done</incoming>
-  <incoming>f_branch_b_done</incoming>
-  <outgoing>f_after_join</outgoing>
-</parallelGateway>
-```
-
-### `<inclusiveGateway>` (OR)
-One or more outgoing flows taken. Every flow whose condition is `true` is activated. Same join semantics: waits for all activated tokens.
-
-### `<eventBasedGateway>`
-Race between events. The first event to arrive wins; others are cancelled.
-```xml
-<eventBasedGateway id="gw_race">
-  <incoming>f_in</incoming>
-  <outgoing>f_to_msg_catch</outgoing>
-  <outgoing>f_to_timer_catch</outgoing>
-</eventBasedGateway>
-<!-- Must be followed by intermediateCatchEvents only -->
-```
-
----
-
-## 5. Sequence Flows
-
-```xml
-<sequenceFlow id="flow_id" name="optional label"
-              sourceRef="source_element_id"
-              targetRef="target_element_id">
-  <!-- Optional condition (only on flows leaving exclusiveGateway or inclusiveGateway) -->
-  <conditionExpression xsi:type="tFormalExpression">
-    {{variables.approved == true}}
-  </conditionExpression>
-</sequenceFlow>
-```
-
-Rules:
-- Every flow needs a unique `id`.
-- `name` is optional but improves diagram readability.
-- Conditions are only valid on flows leaving an `exclusiveGateway` or `inclusiveGateway`.
-- A flow leaving a `parallelGateway` must NOT have a condition.
-
----
-
-## 6. Data & IO
-
-### `<ioSpecification>` on `userTask`
-Controls which variables are exposed by the engine to external consumers (e.g. a task UI).
-```xml
-<ioSpecification>
-  <dataInput  id="in_amount"       name="amount"/>
-  <dataInput  id="in_justification" name="justification"/>
-  <dataOutput id="out_approved"    name="approved"/>
-  <dataOutput id="out_comment"     name="comment"/>
-</ioSpecification>
-```
-- `dataInput` names must match process variable names exactly.
-- `dataOutput` names define what variables the user sets when completing the task.
-- If no `ioSpecification` is declared, the engine exposes **no variables** to the task UI (secure default).
-
-### `<dataInputAssociation>` on `intermediateThrowEvent`
-Controls which variables are included in the event payload when the throw event fires.
-```xml
-<intermediateThrowEvent id="notify_done" name="Analysis Complete">
-  <dataInputAssociation>
-    <sourceRef>creditScore</sourceRef>
-    <sourceRef>approvedLimit</sourceRef>
-  </dataInputAssociation>
-  <messageEventDefinition messageRef="msg_analysis"/>
-</intermediateThrowEvent>
-```
-
----
-
-## 7. Event Definitions
-
-### `<timerEventDefinition>`
-```xml
-<!-- Duration (relative) -->
-<timerEventDefinition>
-  <timeDuration xsi:type="tFormalExpression">PT1H</timeDuration>
+<!-- Timer: exactly one of timeDate | timeDuration | timeCycle -->
+<timerEventDefinition id="TimerDef_wait">
+  <timeDuration xsi:type="tFormalExpression">PT24H</timeDuration>
 </timerEventDefinition>
-
-<!-- Absolute date -->
-<timerEventDefinition>
+<timerEventDefinition id="TimerDef_deadline">
   <timeDate xsi:type="tFormalExpression">2026-12-31T09:00:00Z</timeDate>
 </timerEventDefinition>
-
-<!-- Repeating cycle -->
-<timerEventDefinition>
-  <timeCycle xsi:type="tFormalExpression">R3/PT24H</timeCycle>
+<timerEventDefinition id="TimerDef_daily">
+  <timeCycle xsi:type="tFormalExpression">R/2026-01-01T09:00:00Z/P1D</timeCycle>
 </timerEventDefinition>
 ```
+ISO 8601: durations `PT15M`, `P1D`, `P2DT3H`; dates with zone `2026-12-31T09:00:00Z`; cycles `R3/PT1H`, `R/PT10M`, `R/<start>/<period>`.
+Whether expressions or cron are accepted in timers is **profile-specific**.
 
-### `<messageEventDefinition>`
 ```xml
-<messageEventDefinition messageRef="msg_payment"/>
-<!-- Declare message at top level -->
-<message id="msg_payment" name="payment_received"/>
+<messageEventDefinition id="MsgDef_payment" messageRef="msg_payment_confirmed"/>
+<signalEventDefinition id="SigDef_cancel" signalRef="sig_cancel_order"/>
+<errorEventDefinition id="ErrDef_rejected" errorRef="err_payment_rejected"/>
+<escalationEventDefinition id="EscDef_late" escalationRef="esc_late_delivery"/>
+<terminateEventDefinition id="TermDef_end"/>
+<cancelEventDefinition id="CancelDef_tx"/>
+<compensateEventDefinition id="CompDef_all"/>                        <!-- all completed activities -->
+<compensateEventDefinition id="CompDef_one" activityRef="book_hotel"/> <!-- one activity -->
+<linkEventDefinition id="LinkDef_a" name="ToReview"/>                 <!-- throw & catch share the name -->
+<conditionalEventDefinition id="CondDef_stock">
+  <condition xsi:type="tFormalExpression">stock &gt; 0</condition>
+</conditionalEventDefinition>
 ```
 
-### `<signalEventDefinition>`
-```xml
-<signalEventDefinition signalRef="sig_cancel"/>
-<signal id="sig_cancel" name="cancel_order"/>
-```
-
-### `<errorEventDefinition>`
-```xml
-<errorEventDefinition errorRef="err_timeout"/>
-<error id="err_timeout" name="TimeoutError" errorCode="TIMEOUT"/>
-```
-
-### `<terminateEventDefinition>`
-```xml
-<terminateEventDefinition/>
-```
+An `errorEventDefinition` **without** `errorRef` on a boundary/event-sub-process start catches every error.
+Event-definition `id`s are optional in the XSD but recommended (bpmn-js and several engines rely on them).
 
 ---
 
-## 8. Extension Elements (Camunda-compatible)
+## 5. Activities
 
-These extensions use the Camunda namespace, supported by Camunda-compatible process engines.  
-Add `xmlns:camunda="http://camunda.org/schema/1.0/bpmn"` to `<definitions>`.
+Common attributes on all activities: `id`, `name`, `isForCompensation` (default `false`), `default` (default outgoing flow when the activity has conditional outgoing flows).
 
-| Extension | Element | Purpose |
+| Element | Semantics | Spec-level attributes |
 |---|---|---|
-| `camunda:assignee` | `userTask` | Fixed or dynamic assignee |
-| `camunda:candidateGroups` | `userTask` | Comma-separated group names |
-| `camunda:dueDate` | `userTask` | ISO datetime or expression |
-| `camunda:formKey` | `userTask` | Form identifier |
-| `camunda:in variables="all"` | `callActivity`, `businessRuleTask` | Pass all variables in |
-| `camunda:out variables="all"` | `callActivity`, `businessRuleTask` | Receive all variables out |
-| `camunda:connector/camunda:connectorId` | `serviceTask` | Connector type (`webhook`, `http`) |
-| `camunda:decisionRef` | `businessRuleTask` | `id` of a previously registered DMN definition |
+| `<task>` | Abstract / undefined task. | — |
+| `<userTask>` | Work performed by a person through a task UI. | `implementation` (`##unspecified`, `##WebService`, URI) |
+| `<manualTask>` | Work done without any IT system (no engine interaction). | — |
+| `<serviceTask>` | Automated call to a service. | `implementation`, `operationRef` |
+| `<sendTask>` | Sends a message, then completes. | `messageRef`, `implementation` |
+| `<receiveTask>` | Waits for a message. | `messageRef`, `instantiate` |
+| `<scriptTask>` | Executes a script in the engine. | `scriptFormat` (MIME type or language name); child `<script>` |
+| `<businessRuleTask>` | Evaluates business rules / a decision. | `implementation` |
+| `<callActivity>` | Calls a separately deployed process. | `calledElement` (process key) |
+| `<subProcess>` | Embedded sub-process with its own start/end. | `triggeredByEvent` (event sub-process) |
+| `<transaction>` | Sub-process with transactional (cancel/compensate) semantics. | `method` |
+| `<adHocSubProcess>` | Activities without sequence, chosen at run time. | `ordering` (`Parallel`/`Sequential`), `cancelRemainingInstances`; child `completionCondition` |
 
-Example for `userTask` with all extension attributes:
+How an activity is actually *implemented* (HTTP call, job worker, Java class, assignee …) is never
+expressed with core attributes — the profile adds it through `<extensionElements>` or namespaced attributes.
+
+### Loop characteristics (last child of the activity)
 ```xml
-<userTask id="approve_task" name="Approve"
-          camunda:assignee="{{variables.manager}}"
-          camunda:candidateGroups="finance,approvers"
-          camunda:dueDate="{{variables.dueDate}}">
-  <extensionElements>
-    <camunda:formData>
-      <camunda:formField id="approved" label="Approved?"   type="boolean"/>
-      <camunda:formField id="reason"   label="Reason"      type="string"/>
-      <camunda:formField id="amount"   label="Adj. Amount" type="long"/>
-    </camunda:formData>
-  </extensionElements>
-  ...
+<!-- parallel multi-instance over a fixed count -->
+<multiInstanceLoopCharacteristics isSequential="false">
+  <loopCardinality xsi:type="tFormalExpression">3</loopCardinality>
+  <completionCondition xsi:type="tFormalExpression">approvals &gt;= 2</completionCondition>
+</multiInstanceLoopCharacteristics>
+
+<!-- standard (while) loop -->
+<standardLoopCharacteristics testBefore="false" loopMaximum="5">
+  <loopCondition xsi:type="tFormalExpression">retry == true</loopCondition>
+</standardLoopCharacteristics>
+```
+Iterating over a collection variable is engine-specific (`zeebe:loopCharacteristics`, `flowable:collection` …).
+The expression *bodies* above are placeholders: write them in the profile's expression language.
+
+### Sub-process kinds
+- **Embedded**: `<subProcess>` with one blank `<startEvent>`, its nodes, flows and end events inside.
+- **Event sub-process**: `<subProcess triggeredByEvent="true">` with **no** `<incoming>`/`<outgoing>`, exactly one *typed* start event (timer, message, signal, error, escalation, conditional, compensation). `isInterrupting="false"` on the start makes it non-interrupting (not allowed for error/compensation).
+- **Transaction**: `<transaction>`; cancel with an inner `cancelEventDefinition` end event, caught by a `cancelEventDefinition` boundary.
+- **Ad-hoc**: `<adHocSubProcess>`; inner activities usually have no sequence flows.
+
+### Compensation
+1. Mark the undo activity `isForCompensation="true"` (no incoming/outgoing flows).
+2. Attach a `boundaryEvent` with `compensateEventDefinition` to the activity to be undone.
+3. Connect boundary → handler with an `<association associationDirection="One">` (not a sequence flow),
+   placed in the **process-level** artifacts even when both elements are nested in a sub-process.
+4. Trigger with an intermediate throw or end event carrying `compensateEventDefinition`.
+
+---
+
+## 6. Gateways
+
+| Element | Split | Join | Attributes |
+|---|---|---|---|
+| `<exclusiveGateway>` | exactly one flow (first true condition) | passes each token through | `default` |
+| `<inclusiveGateway>` | every flow whose condition is true (≥ 1) | waits for all *activated* incoming paths | `default` |
+| `<parallelGateway>` | all flows, no conditions | waits for **all** incoming flows | — |
+| `<eventBasedGateway>` | first event to occur wins | — (split only) | `instantiate`, `eventGatewayType` |
+| `<complexGateway>` | custom `activationCondition` | custom | `default` |
+
+Rules:
+- Every outgoing flow of an exclusive/inclusive split has a `conditionExpression`, except the one named in the gateway's `default`.
+- Never mix split and join in one gateway (bpmnlint `no-gateway-join-fork`); use two gateways.
+- Use a gateway to merge flows; several incoming flows directly on a task/event is an implicit join that does **not** synchronize (bpmnlint `fake-join`).
+- An `eventBasedGateway`'s targets are only `intermediateCatchEvent`s (message, timer, signal, conditional) or `receiveTask`s, each with one incoming flow.
+- A parallel join waits forever if one branch can leave the scope (end event, interrupting boundary). Route such branches to a `terminateEventDefinition` end event, or redesign (see `validation-errors.md` → ERR-022).
+
+---
+
+## 7. Sequence flows
+
+```xml
+<sequenceFlow id="flow_gw_amount_to_manual_review" name="&gt; 1000"
+              sourceRef="gw_amount" targetRef="manual_review">
+  <conditionExpression xsi:type="tFormalExpression">amount &gt; 1000</conditionExpression>
+</sequenceFlow>
+```
+- `id`, `sourceRef`, `targetRef` required; `name` required on conditional flows (bpmnlint `label-required`).
+- Conditions are allowed on flows leaving exclusive/inclusive/complex gateways, and on flows leaving an
+  activity (conditional flow; then the activity's `default` attribute may name the fallback flow).
+  Never on flows leaving parallel or event-based gateways or events.
+- The expression **language** is defined by the profile; the core only fixes the structure.
+- Every `sourceRef`/`targetRef` must match the `<outgoing>`/`<incoming>` children of the nodes it connects.
+
+---
+
+## 8. Data
+
+### Data objects and stores
+```xml
+<dataObject id="obj_order" name="Order" itemSubjectRef="item_order"/>
+<dataObjectReference id="ref_order" name="Order" dataObjectRef="obj_order"/>
+<dataStoreReference id="ref_crm" name="CRM" dataStoreRef="store_crm"/>
+```
+`<dataObject>`/`<dataObjectReference>`/`<dataStoreReference>` live inside the process (or sub-process);
+`<itemDefinition>` and `<dataStore>` are root elements.
+
+### Task-level I/O (formal)
+```xml
+<userTask id="review_request" name="Review Request">
+  <incoming>flow_submit_request_to_review_request</incoming>
+  <outgoing>flow_review_request_to_gw_decision</outgoing>
+  <ioSpecification id="io_review_request">
+    <dataInput id="review_request_in_order" name="order"/>
+    <dataOutput id="review_request_out_decision" name="decision"/>
+    <inputSet id="review_request_inputs">
+      <dataInputRefs>review_request_in_order</dataInputRefs>
+    </inputSet>
+    <outputSet id="review_request_outputs">
+      <dataOutputRefs>review_request_out_decision</dataOutputRefs>
+    </outputSet>
+  </ioSpecification>
+  <dataInputAssociation id="dia_review_request_order">
+    <sourceRef>ref_order</sourceRef>
+    <targetRef>review_request_in_order</targetRef>
+  </dataInputAssociation>
+  <dataOutputAssociation id="doa_review_request_decision">
+    <sourceRef>review_request_out_decision</sourceRef>
+    <targetRef>ref_decision</targetRef>
+  </dataOutputAssociation>
 </userTask>
 ```
+- `sourceRef`/`targetRef` are **ID references** to item-aware elements (`dataInput`, `dataOutput`,
+  `dataObjectReference`, `property`) — never variable names.
+- `inputSet` and `outputSet` are mandatory once `ioSpecification` is present (even if empty).
+- Engines map process variables to tasks in very different ways (Stateway `ioMapping`, Zeebe `ioMapping`,
+  Flowable variables). Use formal data associations only when the user wants data modeled in the diagram;
+  otherwise use the profile's mapping mechanism.
+
+### `<property>`
+Process/activity-scoped data item: `<property id="prop_total" name="total" itemSubjectRef="item_number"/>`.
+
+---
+
+## 9. Artifacts
+
+```xml
+<textAnnotation id="note_sla">
+  <text>SLA: 2 business days</text>
+</textAnnotation>
+<association id="assoc_note_sla" sourceRef="review_request" targetRef="note_sla" associationDirection="None"/>
+
+<group id="group_finance" categoryValueRef="cv_finance"/>
+<!-- the group's label comes from a root-level category -->
+<category id="cat_departments">
+  <categoryValue id="cv_finance" value="Finance"/>
+</category>
+```
+- `<documentation>` (first child of any element) carries free text: `<documentation>Why this exists</documentation>`.
+- Artifacts never affect execution.
+
+---
+
+## 10. Out of scope
+
+Not generated by this skill (for now): `collaboration`, `participant` (pools), `laneSet`/`lane`,
+`messageFlow`, choreographies, conversations, CMMN, `multiple`/`parallel multiple` event definitions.
+If the user asks for pools or lanes, say they are out of scope and model the single executable process.

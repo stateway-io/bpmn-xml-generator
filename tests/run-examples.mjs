@@ -8,7 +8,7 @@
 //
 // Usage: node tests/run-examples.mjs   (after `npm ci` in the skill's scripts/ folder)
 
-import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -40,6 +40,10 @@ function markdownFiles() {
   const files = [];
 
   for (const dir of [ SKILL, path.join(SKILL, 'references'), path.join(SKILL, 'profiles') ]) {
+    if (!existsSync(dir)) {
+      continue;
+    }
+
     for (const name of readdirSync(dir)) {
       if (name.endsWith('.md')) {
         files.push(path.join(dir, name));

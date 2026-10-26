@@ -101,7 +101,7 @@ async function checkModdle(xml, profile) {
       findings: warnings.map(warning => ({
         level: 'error',
         source: 'moddle',
-        message: warning.message
+        message: warning.message.replace(/\s*\n\s*/g, ' ')
       }))
     };
   } catch (error) {
