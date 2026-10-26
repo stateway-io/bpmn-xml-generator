@@ -7,23 +7,55 @@
 # Usage (run from your project root):
 #
 #   Claude Code or Cline (shared path):
-#     curl -fsSL https://raw.githubusercontent.com/samueldc/bpmn-xml-generator/main/install.sh | sh
+#     curl -fsSL https://raw.githubusercontent.com/stateway-io/bpmn-xml-generator/main/install.sh | sh
 #
 #   Cline native path:
-#     curl -fsSL https://raw.githubusercontent.com/samueldc/bpmn-xml-generator/main/install.sh | TARGET=cline sh
+#     curl -fsSL https://raw.githubusercontent.com/stateway-io/bpmn-xml-generator/main/install.sh | TARGET=cline sh
 #
 #   Global — Claude Code or Cline (shared path):
-#     curl -fsSL https://raw.githubusercontent.com/samueldc/bpmn-xml-generator/main/install.sh | GLOBAL=1 sh
+#     curl -fsSL https://raw.githubusercontent.com/stateway-io/bpmn-xml-generator/main/install.sh | GLOBAL=1 sh
 #
 #   Global — Cline native path:
-#     curl -fsSL https://raw.githubusercontent.com/samueldc/bpmn-xml-generator/main/install.sh | GLOBAL=1 TARGET=cline sh
+#     curl -fsSL https://raw.githubusercontent.com/stateway-io/bpmn-xml-generator/main/install.sh | GLOBAL=1 TARGET=cline sh
+#
+#   Skip installing the validator's npm dependencies:
+#     ... | NO_DEPS=1 sh
 
 set -e
 
-REPO="samueldc/bpmn-xml-generator"
-BRANCH="main"
-BASE_URL="https://raw.githubusercontent.com/${REPO}/${BRANCH}/.claude/skills/bpmn-xml-generator"
+REPO="${REPO:-stateway-io/bpmn-xml-generator}"
+BRANCH="${BRANCH:-main}"
+BASE_URL="${BASE_URL:-https://raw.githubusercontent.com/${REPO}/${BRANCH}/.claude/skills/bpmn-xml-generator}"
 SKILL="bpmn-xml-generator"
+
+FILES="
+SKILL.md
+references/elements.md
+references/patterns.md
+references/examples.md
+references/validation-errors.md
+profiles/_contract.md
+profiles/stateway.md
+profiles/camunda8.md
+profiles/flowable.md
+scripts/package.json
+scripts/package-lock.json
+scripts/validate.mjs
+scripts/layout.mjs
+scripts/profiles.mjs
+scripts/moddle/stateway.json
+scripts/moddle/flowable.json
+scripts/lint-rules/data-io.cjs
+scripts/lint-rules/engine-support.cjs
+scripts/lint-rules/expression-syntax.cjs
+scripts/lint-rules/flowable-config.cjs
+scripts/lint-rules/stateway-config.cjs
+scripts/xsd/BPMN20.xsd
+scripts/xsd/Semantic.xsd
+scripts/xsd/BPMNDI.xsd
+scripts/xsd/DC.xsd
+scripts/xsd/DI.xsd
+"
 
 # Resolve destination directory
 if [ "${GLOBAL:-0}" = "1" ]; then
@@ -57,18 +89,31 @@ fi
 # ---------------------------------------------------------------------------
 printf 'Installing %s skill to %s\n' "$SKILL" "$DEST"
 
-mkdir -p "$DEST/references"
+for file in $FILES; do
+  mkdir -p "$DEST/$(dirname "$file")"
+  fetch "$BASE_URL/$file" "$DEST/$file"
+  printf '  [ok] %s\n' "$file"
+done
 
-fetch "$BASE_URL/SKILL.md"                        "$DEST/SKILL.md"
-printf '  [ok] SKILL.md\n'
+# ---------------------------------------------------------------------------
+# Validator dependencies (optional, needs Node.js >= 20)
+# ---------------------------------------------------------------------------
+if [ "${NO_DEPS:-0}" = "1" ]; then
+  printf '\nSkipped validator dependencies (NO_DEPS=1).\n'
+elif command -v npm > /dev/null 2>&1; then
+  printf '\nInstalling validator dependencies...\n'
+  if npm ci --prefix "$DEST/scripts" --no-audit --no-fund --loglevel=error; then
+    printf '  [ok] scripts/node_modules\n'
+  else
+    printf '  [warn] npm ci failed; run it later: npm ci --prefix %s/scripts\n' "$DEST"
+  fi
+else
+  printf '\nNode.js/npm not found: the skill works, but cannot run its validator.\n'
+  printf 'Install Node.js >= 20, then run: npm ci --prefix %s/scripts\n' "$DEST"
+fi
 
-fetch "$BASE_URL/references/elements.md"          "$DEST/references/elements.md"
-printf '  [ok] references/elements.md\n'
-
-fetch "$BASE_URL/references/examples.md"          "$DEST/references/examples.md"
-printf '  [ok] references/examples.md\n'
-
-fetch "$BASE_URL/references/validation-errors.md" "$DEST/references/validation-errors.md"
-printf '  [ok] references/validation-errors.md\n'
+if ! command -v xmllint > /dev/null 2>&1; then
+  printf 'Optional: install xmllint (libxml2) to enable the XSD check of the validator.\n'
+fi
 
 printf '\nDone. Restart Claude Code or Cline (or start a new session) to activate the skill.\n'
