@@ -1,5 +1,6 @@
 ---
 name: bpmn-xml-generator
+license: Apache-2.0
 description: >
   Generate well-formed, schema-valid BPMN 2.0 XML for a target process engine (Stateway, Camunda 8 /
   Zeebe, or Flowable). Use this skill whenever the user asks to create, write, design, model, or define

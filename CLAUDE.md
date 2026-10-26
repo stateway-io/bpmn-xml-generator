@@ -16,6 +16,7 @@ convert, migrate, fix or validate a business process / BPMN diagram.
 ```
 .claude/skills/bpmn-xml-generator/
   SKILL.md                        # Entry point: workflow and engine-agnostic authoring rules
+  LICENSE, NOTICE                 # Apache-2.0 + copyright, OMG XSD attribution (installed with the skill)
   references/                     # CORE layer — OMG BPMN 2.0 only, no engine extensions
     elements.md                   #   element reference, XSD child order
     patterns.md                   #   advanced patterns (multi-instance, compensation, …)

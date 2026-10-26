@@ -1,0 +1,22 @@
+bpmn-xml-generator
+Copyright 2026 Samuel Diniz Casimiro
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+BPMN models generated with this skill belong to whoever generates them and are
+not covered by this license.
+
+-------------------------------------------------------------------------------
+Third-party material
+
+scripts/xsd/BPMN20.xsd, Semantic.xsd, BPMNDI.xsd, DC.xsd, DI.xsd
+  OMG BPMN 2.0 XML Schema files, copyright Object Management Group, Inc.
+  Distributed unmodified under the OMG's terms; they are not covered by the
+  Apache License above. Source: https://www.omg.org/spec/BPMN/2.0/
+
+-------------------------------------------------------------------------------
+Trademarks
+
+Stateway, Camunda, Zeebe, Flowable and BPMN are trademarks of their respective
+owners. They are used only to identify the engines and the standard this skill
+targets; no endorsement is implied.

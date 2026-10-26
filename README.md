@@ -164,4 +164,13 @@ Issues and pull requests are welcome.
 
 ## License
 
-[Apache License 2.0](LICENSE)
+Copyright 2026 Samuel Diniz Casimiro. Licensed under the [Apache License 2.0](LICENSE); the
+installed skill carries its own copy of `LICENSE` and `NOTICE`.
+
+- **Generated output**: BPMN models you generate with the skill are yours and are not covered by
+  this license.
+- **Third-party files**: the OMG BPMN 2.0 schemas in `scripts/xsd/` are copyright Object Management
+  Group, Inc., distributed unmodified under the OMG's terms
+  ([source](https://www.omg.org/spec/BPMN/2.0/)).
+- **Trademarks**: Stateway, Camunda, Zeebe, Flowable and BPMN are trademarks of their respective
+  owners, used only to identify the engines and the standard this skill targets.
