@@ -30,6 +30,8 @@ SKILL="bpmn-xml-generator"
 
 FILES="
 SKILL.md
+LICENSE
+NOTICE
 references/elements.md
 references/patterns.md
 references/examples.md
