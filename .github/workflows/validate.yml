@@ -1,0 +1,35 @@
+name: validate
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  skill:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [ 20, 22 ]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: .claude/skills/bpmn-xml-generator/scripts/package-lock.json
+
+      - name: Install xmllint
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libxml2-utils
+
+      - name: Install validator dependencies
+        run: npm ci --prefix .claude/skills/bpmn-xml-generator/scripts
+
+      - name: Validate every XML example (moddle, XSD, bpmnlint, layout)
+        run: node tests/run-examples.mjs
+
+      - name: Check install.sh manifest
+        run: node tests/check-install-manifest.mjs
+
+      - name: Check install.sh syntax
+        run: sh -n install.sh

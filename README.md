@@ -1,6 +1,8 @@
 # bpmn-xml-generator
 
-A skill for [Claude Code](https://claude.ai/code) and [Cline](https://cline.bot) that generates valid BPMN 2.0 XML files from plain-language descriptions. Describe a business process in natural language and get production-ready XML compatible with any `bpmn-moddle`-based process engine (Camunda, Flowable, and compatible engines).
+A skill for [Claude Code](https://claude.ai/code) and [Cline](https://cline.bot) that turns plain-language
+process descriptions into BPMN 2.0 XML that is valid against the OMG specification **and** ready to
+deploy on your process engine: **Stateway**, **Camunda 8 (Zeebe)** or **Flowable**.
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
@@ -8,32 +10,63 @@ A skill for [Claude Code](https://claude.ai/code) and [Cline](https://cline.bot)
 
 ## What it does
 
-When installed, this skill activates automatically whenever you ask Claude Code or Cline to create, model, design, or fix a BPMN process. It:
+When installed, the skill activates whenever you ask the agent to create, model, convert, migrate, fix or
+validate a BPMN process. It:
 
-- **Gathers information before writing** — asks for missing details (assignees, conditions, variable names) in a single focused question rather than generating incomplete XML.
-- **Produces schema-valid XML** — output is parseable by `bpmn-moddle` without errors.
-- **Enforces structural correctness** — validates sequence flow connectivity, gateway conditions, timer formats (ISO 8601), and Camunda extension attribute usage before outputting.
-- **Includes copy-paste patterns** — for all common element types: `userTask`, `serviceTask`, `exclusiveGateway`, `parallelGateway`, timer events, boundary events, message correlation, DMN rule tasks, sub-processes, and `callActivity`.
-- **Generates visual diagram layout** — optionally adds a `BPMNDiagram` section (shapes and edges with auto-computed coordinates) so the file opens immediately in [bpmn.io](https://demo.bpmn.io/) and other BPMN editors. Powered by [`bpmn-auto-layout`](https://github.com/bpmn-io/bpmn-auto-layout); requires Node.js ≥ 18.
+- **Gathers requirements first** — asks, in a single message, for the target engine and every missing
+  detail (assignees, endpoints, conditions, variables) instead of guessing.
+- **Models in engine-agnostic BPMN 2.0** — events, tasks, gateways, sub-processes, multi-instance,
+  event sub-processes, errors, escalations, transactions, compensation, links, conditional events,
+  data objects and artifacts.
+- **Applies an engine profile** — the engine's namespace, expression language, extension elements and
+  support matrix (what the engine executes, parses only, or rejects).
+- **Validates the result with real tools** — namespace allowlist, `bpmn-moddle`, the OMG BPMN 2.0 XSD
+  (`xmllint`) and `bpmnlint` with per-engine rules (`camunda-compat` for Camunda 8).
+- **Generates the diagram** — `bpmn-auto-layout` plus post-processing (boundary events, data
+  associations, annotations, groups) so the file opens in bpmn.io and the engines' modelers.
 
 ---
 
-## Compatibility
+## Architecture
 
-| Tool | Supported | Notes |
-|---|---|---|
-| [Claude Code](https://claude.ai/code) | ✓ | Default install path `.claude/skills/` |
-| [Cline](https://cline.bot) | ✓ | Supports `.claude/skills/` and `.cline/skills/` |
+```
+.claude/skills/bpmn-xml-generator/
+  SKILL.md                    # workflow: gather → model (core) → apply profile → validate → lay out
+  references/                 # CORE: OMG BPMN 2.0 only, no engine extensions
+    elements.md               #   elements, attributes, XSD child order
+    patterns.md               #   multi-instance, event sub-processes, compensation, links …
+    examples.md               #   complete engine-agnostic examples
+    validation-errors.md      #   validator messages and fixes, ID conventions
+  profiles/                   # ENGINE LAYER
+    _contract.md              #   sections every profile must provide
+    stateway.md               #   stateway: extensions, {{ }} expressions
+    camunda8.md               #   zeebe: extensions, FEEL, version-aware checks
+    flowable.md               #   flowable: extensions, JUEL
+  scripts/                    # TOOLING (Node.js ≥ 20)
+    validate.mjs              #   node validate.mjs file.bpmn --profile <core|stateway|camunda8|flowable>
+    layout.mjs                #   node layout.mjs file.bpmn
+    profiles.mjs, moddle/, lint-rules/, xsd/
+tests/
+  run-examples.mjs            # validates every XML block in the skill docs, before and after layout
+  check-install-manifest.mjs  # install.sh downloads exactly the skill's files
+```
 
-The default installation path (`.claude/skills/`) is recognised by both tools, so a single install covers both.
+| Profile | Namespace | Expressions | Source of the support matrix |
+|---|---|---|---|
+| `stateway` | `https://stateway.io/schema/bpmn/1.0` | `{{variables.x}}` | Stateway docs (Supported Elements & Fields) |
+| `camunda8` | `http://camunda.org/schema/zeebe/1.0` | FEEL `=x` | `bpmnlint-plugin-camunda-compat` (per 8.x version) |
+| `flowable` | `http://flowable.org/bpmn` | JUEL `${x}` | Flowable BPMN constructs guide |
+| `core` | — | neutral | Documentation-only models |
+
+**Out of scope for now:** pools, lanes, collaborations and message flows; Camunda 7 (`camunda:` namespace).
 
 ---
 
 ## Requirements
 
 - Claude Code or Cline
-- A Claude subscription (or compatible LLM configured in Cline)
-- Node.js ≥ 18 *(optional — only required if you want the automatic diagram layout feature)*
+- Node.js ≥ 20 — to run the validator and the layout (strongly recommended)
+- `xmllint` (libxml2) — optional, enables the XSD check (child order, mandatory children)
 
 ---
 
@@ -44,36 +77,34 @@ Run from the **root of your project**.
 ### Claude Code and Cline (shared path — recommended)
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/samueldc/bpmn-xml-generator/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/stateway-io/bpmn-xml-generator/main/install.sh | sh
 ```
 
-Installs to `.claude/skills/bpmn-xml-generator/`, which is recognised by both Claude Code and Cline.
+Installs to `.claude/skills/bpmn-xml-generator/` (recognised by both tools) and runs `npm ci` for the
+validator when npm is available (`NO_DEPS=1` skips it).
 
 ### Cline native path
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/samueldc/bpmn-xml-generator/main/install.sh | TARGET=cline sh
+curl -fsSL https://raw.githubusercontent.com/stateway-io/bpmn-xml-generator/main/install.sh | TARGET=cline sh
 ```
-
-Installs to `.cline/skills/bpmn-xml-generator/`.
 
 ### Global installation
 
-Makes the skill available in all your projects.
-
 ```sh
 # Shared path (Claude Code + Cline)
-curl -fsSL https://raw.githubusercontent.com/samueldc/bpmn-xml-generator/main/install.sh | GLOBAL=1 sh
+curl -fsSL https://raw.githubusercontent.com/stateway-io/bpmn-xml-generator/main/install.sh | GLOBAL=1 sh
 
 # Cline native global path
-curl -fsSL https://raw.githubusercontent.com/samueldc/bpmn-xml-generator/main/install.sh | GLOBAL=1 TARGET=cline sh
+curl -fsSL https://raw.githubusercontent.com/stateway-io/bpmn-xml-generator/main/install.sh | GLOBAL=1 TARGET=cline sh
 ```
 
 ### Manual installation
 
 ```sh
-git clone https://github.com/samueldc/bpmn-xml-generator.git
+git clone https://github.com/stateway-io/bpmn-xml-generator.git
 cp -r bpmn-xml-generator/.claude/skills/bpmn-xml-generator .claude/skills/
+npm ci --prefix .claude/skills/bpmn-xml-generator/scripts
 ```
 
 Restart Claude Code or Cline (or start a new session) to activate the skill.
@@ -83,56 +114,33 @@ Restart Claude Code or Cline (or start a new session) to activate the skill.
 ## Use cases
 
 ### Model a process from scratch
-
 ```
-Create a BPMN for an expense reimbursement process. A finance analyst reviews
-requests over $500, while smaller amounts are auto-approved.
+Create a BPMN for expense reimbursement on Stateway. A finance analyst reviews
+requests over $500; smaller amounts are paid automatically through our payments API.
 ```
+The skill asks for what is missing (assignee, API URL, sync/async, variable names) before writing.
 
-The skill will ask for any missing details (assignee, variable names, condition expressions) before generating the XML.
-
-### Convert a description or diagram to BPMN
-
+### Convert a description to BPMN
 ```
-Convert this flow to BPMN:
+Convert this flow to BPMN for Camunda 8.8:
 1. Customer places an order
-2. System reserves stock
+2. Reserve stock for each item
 3. Wait up to 24h for payment confirmation
-4. If payment received → ship order; if timeout → cancel order and release stock
+4. If paid → ship; if timeout → release stock and cancel
 ```
 
-### Fix or edit an existing BPMN file
-
+### Fix, validate or migrate an existing file
 ```
-Add a 48-hour boundary timer to the "KYC Review" task that escalates to a
-senior analyst if not completed in time.
+Validate order.bpmn for Flowable and fix the errors.
+Migrate this Camunda 8 process to Stateway.
+Add a 48-hour timer to "KYC Review" that escalates to a senior analyst.
 ```
 
-### Common patterns covered
-
-| Pattern | Elements used |
-|---|---|
-| Human approval flow | `userTask`, `exclusiveGateway` |
-| Parallel steps (AND split/join) | `parallelGateway` |
-| Wait for external event | `intermediateCatchEvent` (Message or Timer) |
-| Timeout escalation | `boundaryEvent` (Timer, interrupting) |
-| Race between events | `eventBasedGateway` |
-| DMN decision table | `businessRuleTask` with `camunda:decisionRef` |
-| Call a sub-process | `callActivity` |
-| Script / computed variable | `scriptTask` |
-
----
-
-## How the skill works
-
-The skill is defined in `.claude/skills/bpmn-xml-generator/SKILL.md` and loads additional reference files on demand:
-
-| File | Purpose |
-|---|---|
-| `SKILL.md` | Entry point: authoring rules, element list, patterns, validation checklist |
-| `references/elements.md` | Full attribute reference for every supported element |
-| `references/examples.md` | 4 complete, ready-to-upload BPMN examples |
-| `references/validation-errors.md` | Common `bpmn-moddle` parse errors and fixes |
+### Validate any file yourself
+```sh
+node .claude/skills/bpmn-xml-generator/scripts/validate.mjs order.bpmn --profile camunda8 --engine-version 8.8
+node .claude/skills/bpmn-xml-generator/scripts/layout.mjs order.bpmn
+```
 
 ---
 
@@ -140,22 +148,17 @@ The skill is defined in `.claude/skills/bpmn-xml-generator/SKILL.md` and loads a
 
 Issues and pull requests are welcome.
 
-### Reporting a bug or requesting a feature
-
-1. Check [existing issues](https://github.com/samueldc/bpmn-xml-generator/issues) to avoid duplicates.
-2. Open a [new issue](https://github.com/samueldc/bpmn-xml-generator/issues/new) with:
-   - A clear title describing the problem or request.
-   - For bugs: the prompt you used, the XML output, and the error (parse or engine error message).
-   - For feature requests: the BPMN pattern or element you need and a concrete example.
-
-### Submitting a pull request
-
 1. Fork the repository and create a branch from `main`.
-2. Make your changes to the skill files under `.claude/skills/bpmn-xml-generator/`.
-3. Verify that any new XML snippets are valid BPMN 2.0 (parseable by `bpmn-moddle`).
-4. Open a pull request with a description of what changed and why.
-
-Contributions that add new element patterns, fix incorrect documentation, or improve the information-gathering prompts are especially welcome.
+2. Change the skill under `.claude/skills/bpmn-xml-generator/`. Core rules stay engine-agnostic;
+   engine specifics go to `profiles/` (see `profiles/_contract.md` to add an engine).
+3. Tag complete XML examples with ```` ```xml profile=<name> ```` so they are validated.
+4. Run the checks:
+   ```sh
+   npm ci --prefix .claude/skills/bpmn-xml-generator/scripts
+   node tests/run-examples.mjs
+   node tests/check-install-manifest.mjs
+   ```
+5. Open a pull request describing what changed and why. CI runs the same checks.
 
 ---
 
