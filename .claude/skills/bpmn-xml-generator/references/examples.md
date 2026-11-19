@@ -196,7 +196,7 @@ token from the welcome branch would wait forever at the parallel join (see ERR-0
 
 **Use case:** order placed → stock reserved → wait for the payment message **or** a 24 h timeout.
 
-> Not every engine executes `eventBasedGateway` (Stateway parses but does not execute it).
+> Not every engine executes `eventBasedGateway` (Stateway rejects it at publish).
 > Check the profile's support matrix; `profiles/stateway.md` shows the alternative.
 
 ```xml profile=core

@@ -62,7 +62,7 @@ mode for Stateway HTTP tasks, job types for Camunda 8, delegate kind for Flowabl
 ### 1.4 Clarify ambiguity
 "Approve or reject" → confirm: exclusive choice? what ends each path? what is the condition and the default?
 "Notify A and/or B" → inclusive vs parallel. "Wait for X or timeout" → event-based gateway or boundary timer
-(check the profile's support matrix — e.g. Stateway does not execute event-based gateways).
+(check the profile's support matrix — e.g. Stateway rejects event-based gateways at publish).
 
 ### 1.5 Drafting with assumptions
 Only if the user explicitly says to proceed with defaults: generate, and list every assumption

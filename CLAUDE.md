@@ -54,7 +54,11 @@ install.sh                        # curl | sh installer (file manifest + optiona
 - **Stateway** uses its own namespace `https://stateway.io/schema/bpmn/1.0` (`stateway:taskDefinition`,
   `taskHeaders`, `ioMapping`, `assignmentDefinition`, `decisionRef`, `eventCorrelation`,
   `variableFilter`) — not `camunda:`. Expressions `{{…}}`; ioMapping targets are bare names; timers
-  literal ISO 8601; no retries; `scriptTask`, `receiveTask`, `eventBasedGateway` are parse-only.
+  literal ISO 8601; no retries; `scriptTask`, `receiveTask`, `eventBasedGateway` are rejected at
+  publish (Stateway has no parse-only constructs); multi-instance is supported (not on an embedded
+  subProcess). `scripts/moddle/stateway.json` is a copy of the engine's descriptor
+  (`src/engine/parser/stateway-moddle.json` in the Stateway repo) plus the `DecisionAttributes` type;
+  re-copy it when the engine's vocabulary changes — the Stateway repo has a test that fails on drift.
   Deploy with `POST /v1/definitions`. Source: https://docs.stateway.io.
 - **Camunda 8**: `zeebe:` extensions, FEEL with `=` prefix, support depends on the 8.x version
   (validator `--engine-version`, default 8.10).
